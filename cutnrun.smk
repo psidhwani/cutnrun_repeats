@@ -177,7 +177,7 @@ rule scale_data:
     output:'{sampleID}/{chip}/bowtie/{aligner_config}/{rgP}/reads.norm.bdg'
     threads: config["max_threads"]
     shell: """
-bedtools genomecov -bg -scale {input.norm_factor} -ibam {input.bam} > {output}
+bedtools genomecov -bg -scale `awk '{{print $1}}'{input.norm_factor}` -ibam {input.bam} > {output}
 """
 # rule make_genomecov:
 #     input:
@@ -185,7 +185,7 @@ bedtools genomecov -bg -scale {input.norm_factor} -ibam {input.bam} > {output}
 #     output:
 #         bg='{sampleID}/{chip}/bigwigs/{aligner_config}/{rgP}/genomecov.bg'
 #     shell:"""    
-# bedtools genomecov -bg -ibam  {input.bam}> {output.bedgraph}
+# bedtools genomecov -bg -ibam {input.bam}> {output.bedgraph}
 # """
 
 # rule make_binned_bw:
