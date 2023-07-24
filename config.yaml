@@ -1,0 +1,87 @@
+# === CONFIG FILE FOR CHARSEQ2.0 PIPELINE ===
+
+# === Desired samples, pulling, and run configuations ===
+run_samples: ['corces2018'] #['s1_hESC_normal'] #,'s2_hESC_PacI','s5_THP1_pre','s6_THP1_post','s7_THP1_pre_PacI']
+# run_pools: ['PULL_ESCs','THP1_pre','THP1_post']
+run_alignment_modes: ['chm13v2_unmasked']
+#run_mates_pairing_modes: ['allPairs']
+
+workdir: ./data
+
+nreads: -1 
+#1000000 #if >0, will run the analysis on the first *nreads* reads. Useful to test the pipeline on a small number of reads (for ex: nreads=10000)
+
+max_threads: 8
+max_mem: 80g
+qual_encoding: 33
+
+# === SAMPLES DEFINITION ===
+
+samples:
+  K562:
+    sgSETDB1_2_CA:
+      PE1: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX6_S6_L001_R1_001.fastq.gz
+      PE2: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX6_S6_L001_R2_001.fastq.gz
+      clip: /home/groups/astraigh/charseq2.0/resources/illuminaClipping_main.fa
+    sgSETDB1_2_K9me3:
+      PE1: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX7_S7_L001_R1_001.fastq.gz
+      PE2: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX7_S7_L001_R2_001.fastq.gz
+      clip: /home/groups/astraigh/charseq2.0/resources/illuminaClipping_main.fa
+    sgSETDB1_2_IgG:
+      PE1: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX8_S8_L001_R1_001.fastq.gz
+      PE2: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX8_S8_L001_R2_001.fastq.gz
+      clip: /home/groups/astraigh/charseq2.0/resources/illuminaClipping_main.fa
+    sgSAFE_1_CA:
+      PE1: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX1_S1_L001_R1_001.fastq.gz
+      PE2: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX1_S1_L001_R2_001.fastq.gz
+      clip: /home/groups/astraigh/charseq2.0/resources/illuminaClipping_main.fa
+    sgSAFE_1_K9me3:
+      PE1: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX2_S2_L001_R1_001.fastq.gz
+      PE2: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX2_S2_L001_R2_001.fastq.gz
+      clip: /home/groups/astraigh/charseq2.0/resources/illuminaClipping_main.fa
+    sgSAFE_1_IgG:
+      PE1: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX3_S3_L001_R1_001.fastq.gz
+      PE2: /oak/stanford/groups/astraigh/Pragya/cutnrun/230703_M08209_0050_000000000-KMMWF/Alignment_1/20230704_134047/Fastq/BOX3_S3_L001_R2_001.fastq.gz
+      clip: /home/groups/astraigh/charseq2.0/resources/illuminaClipping_main.fa
+macs:
+  CA:
+    control: sgSAFE_1_IgG
+    treatment: sgSAFE_1_CA
+    options: -q 0.05 --broad --keep-dup all
+  K9me3:
+    control: sgSAFE_1_IgG
+    treatment: sgSAFE_1_K9me3
+    options: -q 0.05 --broad --keep-dup all
+  CA_SETDB1KO:
+    control: sgSETDB1_2_IgG
+    treatment: sgSETDB1_2_CA
+    options: -q 0.05 --broad --keep-dup all
+  K9me3_SETDB1KO:
+    control: sgSETDB1_2_IgG
+    treatment: sgSETDB1_2_K9me3
+    options: -q 0.05 --broad  --keep-dup all
+
+
+# === PROCESSING OPTIONS ===
+trimmomatic_options: 2:30:12 SLIDINGWINDOW:10:10 MINLEN:20 #options for trimmomatic
+pear_options: -p 0.01 -v 20 -n 50
+trimmomatic_options_nodrop: 2:30:12:4:true SLIDINGWINDOW:10:10 MINLEN:20 #options for trimmomatic 
+
+
+# === PATHS ===
+scripts_path: /home/groups/astraigh/charseq2.0/scripts:/home/groups/astraigh/charseq2.0/src/hotpy/hotpy
+trimmomatic_filepath: /home/groups/astraigh/Trimmomatic-0.38/trimmomatic-0.38.jar
+picard_filepath: /home/groups/astraigh/miniconda3/envs/charseq/share/picard-2.18.15-0/picard.jar
+
+bowtie_configurations:
+  chm13v2_unmasked:
+    S: --very-sensitive --phred33 -x /oak/stanford/groups/astraigh/T2T/CURRENT/T2T-CHM13v2.0-hs1_jan2022/bowtie_index/hs1
+    P: -I 120 -X 500 --no-discordant --no-mixed --very-sensitive --phred33 -x /oak/stanford/groups/astraigh/T2T/CURRENT/T2T-CHM13v2.0-hs1_jan2022/bowtie_index/hs1
+
+chromosomes: '/oak/stanford/groups/astraigh/T2T/CURRENT/T2T-CHM13v2.0-hs1_jan2022/hs1.chromsizes.txt'
+
+
+# # === INTERNAL CONFIGURATION OF MATE PAIRING MODES (do not change unless you know what you're doing) ===
+# mates_pairing_modes: #wc : mates_pairing_mode
+#   PE: ['readthrough/reads', 'allPairs/long/R/rna.2.revcomp', 'allPairs/long/D/rna'] #[SE/U1, SE/U2, SE/FR, SE/discardMate] #
+#   SE_merge_pear: ['readthrough/long/rna', 'unmergedPairs_pear/long/R/rna.2.revcomp', 'unmergedPairs_pear/long/D/rna', 'mergedPairs_pear/long/rna']
