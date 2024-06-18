@@ -1,0 +1,87 @@
+#DEseq2 analysis for ALR/Alpha_HOR
+#python scripts used in this pipeline were written by Georgi Marinov and can be found here https://github.com/georgimarinov/GeorgiScripts
+
+#first align files with unique alignments and no mismatches or 1 mismatch and all alignments
+#alignment uses a bowtie version that adds NH tags
+
+/home/users/psidhwan/.conda/envs/marinov/bin/bowtie-1.0.1+hamrhein_nh_patch/bowtie /oak/stanford/groups/astraigh/T2T/CURRENT/T2T-CHM13v2.0-hs1_jan2022/bowtie1_index_kundaje/hs1 -p 12 -t -v 0 -m 1 --best --strata -q --sam-nh -X 1000 --sam reads.pfilter1.fastq -S | samtools view -bS | samtools sort > /scratch/users/psidhwan/cutnrun_novogene_round2/data/K562/TKO_K9me2_r1/bowtie/chm13v2_unmasked/allPairs/reads.pfilter1.v0m1.bam
+
+or
+
+/home/users/psidhwan/.conda/envs/marinov/bin/bowtie-1.0.1+hamrhein_nh_patch/bowtie /oak/stanford/groups/astraigh/T2T/CURRENT/T2T-CHM13v2.0-hs1_jan2022/bowtie1_index_kundaje/hs1 -p 12 -t -v 1 -a --best --strata -q --sam-nh -X 1000 --sam reads.pfilter1.fastq -S | samtools view -bS | samtools sort > /scratch/users/psidhwan/cutnrun_novogene_round2/data/K562/TKO_K9me2_r1/bowtie/chm13v2_unmasked/allPairs/reads.pfilter1.v1a.bam
+
+#samtools index
+
+ml biology samtools
+
+samtools index /scratch/users/psidhwan/cutnrun_novogene_round2/data/K562/TKO_K9me2_r1/bowtie/chm13v2_unmasked/allPairs/reads.pfilter1.v1a.bam
+
+#do counts for repeatmasker file intersected with censat annotation or the genomic complement
+
+python /home/groups/astraigh/shared/cutnrun_repeat_analysis/bedRawReadCountsBAM.py3.py /home/groups/astraigh/shared/cutnrun_repeat_analysis/chm13v2.0_rmsk_censatanno.sorted.bed 0 /scratch/users/psidhwan/cutnrun_novogene_round2/data/K562/TKO_K9me2_r1/bowtie/chm13v2_unmasked/allPairs/reads.pfilter1.v0m1.bam TKO_K9me2_r1.RM.censat.counts --uniqueBAM && 
+
+python /home/groups/astraigh/shared/cutnrun_repeat_analysis/bedRawReadCountsBAM.py3.py /home/groups/astraigh/shared/cutnrun_repeat_analysis/hs1.rmsk_censat.complement.1kb.bed 0 /scratch/users/psidhwan/cutnrun_novogene_round2/data/K562/TKO_K9me2_r2/bowtie/chm13v2_unmasked/allPairs/reads.pfilter1.v0m1.bam TKO_K9me2_r2.RM.censat.complement.counts --uniqueBAM
+
+#alternatively, if the alignments were done using the options -v 1 (to allow for a single mismatch) -a (to report all alignments), remove the --uniqueBAM tag
+
+#merge counts from RM and RM_complement while assigning gbins, do iteratively for WT_r1, WT_r2, DKO_r1, DKO_r2
+
+cat <(awk 'BEGIN {OFS="\t"} {print $1, $2, $3, "bin"NR, "gbin", $4}' WT_K9me3_r1_bt1_m1v0.RM.complement.counts) <(awk 'BEGIN {OFS="\t"} {print $5, $6, $7, $10, $11, $16}' WT_K9me3_r1_bt1_m1v0.RM.counts) > WT_K9me3_r1_bt1_m1v0.RM.merge.counts
+
+#convert merge counts to table with gene names and raw counts
+
+cat <(awk 'BEGIN {OFS="\t"} {print "bin"NR, $4}' WT_K9me3_r1_bt1_m1v0.RM.complement.counts)  <(awk 'BEGIN {OFS="\t"} {print $1, $2}' WT_K9me3_r1_bt1_m1v0.RM.counts.repeat) > WT_K9me3_r1_bt1_m1v0.RM.merge.counts.table
+
+#sort WT and DKO tables and join on gene names
+sort -k1,1 WT_K9me3_r1_bt1_m1v0.RM.merge.counts.table | join -1 1 -2 1 -t$'\t' - <(sort -k1,1 WT_K9me3_r2_bt1_m1v0.RM.merge.counts.table) | join -1 1 -2 1 -t$'\t' - <(sort -k1,1 DKO_K9me3_r1_bt1_m1v0.RM.merge.counts.table) | join -1 1 -2 1 -t$'\t' - <(sort -k1,1 DKO_K9me3_r2_bt1_m1v0.RM.merge.counts.table) > K9me3_WT_r12_DKOr12.counts.table
+
+#if alignments were performed wit -v 1 -a, you will need to integerize the counts prior to running  DEseq2
+awk 'BEGIN{FS=OFS="\t"} {print $1, sprintf("%.0f", $2), sprintf("%.0f", $3), sprintf("%.0f", $4), sprintf("%.0f", $5) }' K9me3_WT_r12_DKOr12.counts.table
+
+# add header to counts table
+echo -e "\tWT_r1\tWT_r2\tDKO_r1\tDKO_r2" | cat - K9me3_WT_r12_DKOr12.counts.table > K9me3_WT_r12_DKOr12.counts.htable
+
+#make sample metadata table
+vi K9me3_WT_r12_DKOr12.meta
+	sampletype
+WT_r1	control
+WT_r2	control
+DKO_r1	knockout
+DKO_r2	knockout
+
+#Run Rscript by loading R module on Sherlock followed by Rscript DEseq2.R
+ml R/4.2.0
+
+#vi DEseq2.R
+
+library(DESeq2)
+library(tidyverse)
+K9me3_m1v0 <- read.table("K9me3_WT_r12_DKOr12.counts.htable", header = TRUE, sep = "\t", row.names = 1)
+
+metadata <- read.table("K9me3_WT_r12_DKOr12.meta", header = TRUE, sep = "\t", row.names = 1)
+
+dds <- DESeqDataSetFromMatrix(count_data, metadata, design = ~ sampletype)
+
+dds <- DESeq(dds)
+
+contrast_K9me3 <- c("sampletype", "knockout", "control")
+
+res_table <- results(dds, contrast=contrast_K9me3, alpha = 0.1)
+
+res_table <- lfcShrink(dds, contrast=contrast_K9me3, type="ashr", res=res_table)
+
+summary(res_table, alpha = 0.1)
+
+padj.cutoff <- 0.1
+
+res_table_tb <- res_table %>%
+  data.frame() %>%
+  rownames_to_column(var="gene") %>%
+  as_tibble()
+
+sig <- res_table_tb %>%
+        filter(padj < padj.cutoff)
+saveRDS(sig, file = "sig_WTr12_DKOr12_K9me3.rds")
+saveRDS(res_table_tb, file = "res_table_tb_WTr12_DKO_r12.rds")
+# Assuming 'sig' is your data frame or tibble
+write.table(sig, file = "K9me3_WTr12_DKOr12_sig.txt", sep = "\t", quote = FALSE, row.names = FALSE)
